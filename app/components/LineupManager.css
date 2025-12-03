@@ -1,0 +1,154 @@
+/* 整個頁面的容器 */
+.container {
+  max-width: 900px;
+  margin: 0 auto; /* 置中 */
+  padding: 2rem; /* 內距，讓內容不要貼邊 */
+  font-family: 'Arial', sans-serif;
+}
+
+/* 頂部標題與薪資區塊 */
+.header {
+  display: flex;
+  justify-content: space-between; /* 左右撐開 */
+  align-items: flex-end; /* 底部對齊 */
+  margin-bottom: 2rem; /* 與下方內容的距離 */
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+}
+
+/* 薪資資訊 */
+.salaryInfo {
+  text-align: right;
+}
+
+.salaryText {
+  font-size: 1.1rem;
+  margin: 5px 0; /* 文字上下的間距 */
+  font-weight: 500;
+}
+
+/* 陣容區塊與球員池區塊 */
+.section {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px; /* 圓角 */
+  padding: 1.5rem;
+  margin-bottom: 2rem; /* 區塊之間的距離 */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* 淡淡的陰影 */
+}
+
+.sectionTitle {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  color: #444;
+  border-left: 5px solid #0070f3; /* 左邊藍色裝飾線 */
+  padding-left: 10px;
+}
+
+/* 球員列表 (Grid 排版) */
+.playerList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* 每一行球員之間的距離 */
+}
+
+/* 單個球員卡片 */
+.playerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  transition: transform 0.1s ease, background-color 0.2s;
+}
+
+.playerRow:hover {
+  background-color: #f0f8ff; /* 滑鼠移過去變色 */
+  transform: translateY(-2px); /* 微微浮起 */
+}
+
+/* 球員資訊文字區 */
+.playerInfo {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* 位置、姓名、隊伍之間的距離 */
+}
+
+.positionBadge {
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  width: 30px;
+  text-align: center;
+}
+
+.playerName {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #222;
+}
+
+.playerTeam {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.playerSalary {
+  font-weight: bold;
+  color: #0070f3;
+  font-size: 1.1rem;
+  margin-right: 15px;
+}
+
+/* 按鈕樣式 */
+.button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: opacity 0.2s;
+}
+
+.button:hover {
+  opacity: 0.8;
+}
+
+.addButton {
+  background-color: #28a745; /* 綠色 */
+  color: white;
+}
+
+.removeButton {
+  background-color: #dc3545; /* 紅色 */
+  color: white;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.2rem;
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 1rem;
+  font-weight: bold;
+}
+
+.submitButton:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}

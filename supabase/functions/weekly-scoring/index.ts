@@ -7,7 +7,6 @@ import { createClient } from '@supabase/supabase-js'
 // [修正 1] game_stats 資料表型別
 interface GameStat {
   player_id: number;
-  // 允許 key 是字串，值是多種類型
   [key: string]: number | string | boolean | null;
 }
 
@@ -22,8 +21,7 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-// [修正 2] Deno.serve 的 handler 必須有 'Request' 型別
-// 並且我們用 _req 告訴 Deno "我知道我沒用它"
+// [修正 2] 使用 _req
 Deno.serve(async (_req: Request) => {
 
   try {
@@ -50,7 +48,7 @@ Deno.serve(async (_req: Request) => {
     if (lineupsError) throw new Error(`抓取 user_lineups 失敗: ${lineupsError.message}`);
     if (!lineups || lineups.length === 0) {
       return new Response(JSON.stringify({ message: `Week ${current_week} 沒有任何玩家陣容，無需結算。` }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'ContentType': 'application/json' },
         status: 200,
       });
     }
@@ -85,11 +83,12 @@ Deno.serve(async (_req: Request) => {
         }
       }
       
-      totalWeeklyScore = Math.round(totalWeeklyScore * 100) / 100;
+      // [!!! 你的要求 !!!] 四捨五入到「整數」
+      totalWeeklyScore = Math.round(totalWeeklyScore);
 
       // --- 步驟 5: 將分數寫回資料庫 ---
 
-      // 5a. 更新 'user_lineups' 的本週分數
+      // 5a. 更新 'user_lineups' 的本週分數 (現在存的是 "33" 而不是 "33.3")
       await supabaseAdmin
         .from('user_lineups')
         .update({ total_weekly_score: totalWeeklyScore })
