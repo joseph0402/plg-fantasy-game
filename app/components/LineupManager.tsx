@@ -1,42 +1,36 @@
-// components/LineupManager.tsx
-
 "use client" // [重要] 標記為 Client Component
 
 import { useState, useEffect, useMemo } from 'react'
-import './LineupManager.css' // 🎯 在這裡導入 CSS
+// [修正] 引用正確的 CSS Module 路徑 (指向我們之前建立的 page.module.css)
+import styles from './LineupManager.module.css'
+
 import { supabase } from '../../lib/supabaseClient' 
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js' 
 import type { Player, GameSettings } from '../../lib/types' 
 
-// [新增] 定義這個組件接收的 props 型別
 interface LineupManagerProps {
   initialPlayers: Player[];
   gameSettings: GameSettings;
 }
 
-// ----------------------------------------------------
-// 🎯 刪除行內樣式定義 (不再需要)
-// const styles: { [key: string]: React.CSSProperties } = { ... }; 
-
-// 陣容規則 (不變)
 const LINEUP_RULES: { [key: string]: number } = { 'G': 2, 'F': 2, 'C': 1 };
 const TOTAL_PLAYERS = 5;
 
-// [修改] 套用我們定義的 Props 型別
 export default function LineupManager({ initialPlayers, gameSettings }: LineupManagerProps) {
   
-  // 1. State 定義 (不變)
   const [user, setUser] = useState<User | null>(null)
   const [lineup, setLineup] = useState<Player[]>([]) 
   const [players, setPlayers] = useState<Player[]>(initialPlayers)
+  // [新增 1] 隊長狀態：紀錄被選為隊長的 player_id
+  const [captainId, setCaptainId] = useState<number | null>(null)
+  
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const router = useRouter()
 
-  // 2. 驗證使用者身份 & 載入陣容 (不變)
+  // 1. 驗證使用者身份 & 載入陣容
   useEffect(() => {
-    // ... (邏輯不變)
     const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
@@ -65,13 +59,19 @@ export default function LineupManager({ initialPlayers, gameSettings }: LineupMa
         const savedPlayerIds = data.selected_players as number[]; 
         const savedLineup = initialPlayers.filter(p => savedPlayerIds.includes(p.id));
         setLineup(savedLineup);
+        
+        // [新增 2] 如果資料庫有紀錄隊長，就載入它
+        // 注意：如果你資料庫還沒加 captain_id 欄位，這行暫時讀不到東西是正常的
+        if (data.captain_id) {
+          setCaptainId(data.captain_id)
+        }
       }
     } catch (error) {
       console.error('載入陣容錯誤:', (error as Error).message)
     }
   }
 
-  // 3. 計算薪資和位置 (不變)
+  // 2. 計算薪資和位置 (不變)
   const { currentSalary, salaryRemaining, positionCounts } = useMemo(() => {
     const salary = lineup.reduce((acc, player) => acc + player.salary, 0)
     const counts: { [key: string]: number } = { 'G': 0, 'F': 0, 'C': 0 } 
@@ -87,7 +87,7 @@ export default function LineupManager({ initialPlayers, gameSettings }: LineupMa
     }
   }, [lineup, gameSettings.salary_cap])
 
-  // 4. 新增球員到陣容 (不變)
+  // 3. 動作函式
   const addPlayer = (player: Player) => { 
     if (lineup.length >= TOTAL_PLAYERS) {
       alert("陣容已滿 (5人)！")
@@ -108,15 +108,37 @@ export default function LineupManager({ initialPlayers, gameSettings }: LineupMa
     setLineup([...lineup, player])
   }
 
-  // 5. 從陣容移除球員 (不變)
   const removePlayer = (playerToRemove: Player) => { 
     setLineup(lineup.filter(p => p.id !== playerToRemove.id))
+    // [新增 3] 如果移除的剛好是隊長，要重置隊長狀態
+    if (captainId === playerToRemove.id) {
+      setCaptainId(null)
+    }
   }
 
-  // 6. 提交陣容到 Supabase (不變)
+  // [新增 4] 切換隊長的函式
+  const toggleCaptain = (playerId: number) => {
+    // 如果點擊已經是隊長的人 -> 取消隊長
+    // 如果點擊其他人 -> 設為新隊長
+    setCaptainId(prev => prev === playerId ? null : playerId)
+  }
+
+  // 4. 提交陣容
   const handleSubmitLineup = async () => {
     if (lineup.length !== TOTAL_PLAYERS) {
       alert(`陣容必須剛好 ${TOTAL_PLAYERS} 人！`)
+      return
+    }
+    
+    // [新增 5] 檢查是否選了隊長
+    if (!captainId) {
+      alert("請點擊球員名字旁邊的 ★，選擇一名隊長！(隊長分數 x1.2)")
+      return
+    }
+
+    // [新增] 防呆：確保隊長真的在目前的陣容裡
+    if (!lineup.find(p => p.id === captainId)) {
+      alert("無效的隊長選擇，請重新選擇！")
       return
     }
     
@@ -132,12 +154,13 @@ export default function LineupManager({ initialPlayers, gameSettings }: LineupMa
           user_id: user.id,
           week_number: gameSettings.current_week,
           selected_players: playerIds,
+          captain_id: captainId, // [新增 6] 將隊長 ID 存入資料庫
         }, {
           onConflict: 'user_id, week_number' 
         })
 
       if (error) throw error
-      alert('陣容儲存成功！')
+      alert('陣容與隊長儲存成功！')
       router.push('/') 
       router.refresh()
 
@@ -149,101 +172,114 @@ export default function LineupManager({ initialPlayers, gameSettings }: LineupMa
     }
   }
   
-  // 7. 過濾出還在球員池的球員 (不變)
   const availablePlayers = useMemo(() => {
     const lineupIds = lineup.map(p => p.id);
     return players.filter(p => !lineupIds.includes(p.id));
   }, [players, lineup]);
 
-  // 8. 渲染 JSX 
   if (loading) return <div style={{textAlign: 'center', marginTop: 50}}>載入玩家資料中...</div>
 
   return (
-    // 🎯 套用 .container 類名
-    <div className="container"> 
+    <div className={styles.container}> 
       
-      {/* 頂部標題與薪資區塊 */}
-      {/* 🎯 套用 .header 和 .salaryInfo 類名 */}
-      <header className="header">
-        <h1 className="title">🏀 設定你的陣容 (Week {gameSettings.current_week})</h1>
-        <div className="salaryInfo">
-          {/* 🎯 套用 .salaryText 類名 */}
-          <p className="salaryText" style={{ color: salaryRemaining < 0 ? '#dc3545' : '#28a745' }}> 
+      <header className={styles.header}>
+        <h1 className={styles.title}>🏀 設定你的陣容 (Week {gameSettings.current_week})</h1>
+        <div className={styles.salaryInfo}>
+          <p className={styles.salaryText} style={{ color: salaryRemaining < 0 ? '#dc3545' : '#28a745' }}> 
             剩餘薪資: ${salaryRemaining.toLocaleString()}
           </p>
-          <p className="salaryText">
+          <p className={styles.salaryText}>
             總薪資: ${currentSalary.toLocaleString()} / ${gameSettings.salary_cap.toLocaleString()}
           </p>
         </div>
       </header>
 
-      {/* 我的陣容 */}
-      {/* 🎯 套用 .section 類名 */}
-      <section className="section"> 
-        {/* 🎯 套用 .sectionTitle 類名 */}
-        <h2 className="sectionTitle">✅ 我的陣容 ({lineup.length}/{TOTAL_PLAYERS})</h2>
-        <p>
-          G: **{positionCounts['G']}**/{LINEUP_RULES['G']} | 
-          F: **{positionCounts['F']}**/{LINEUP_RULES['F']} | 
-          C: **{positionCounts['C']}**/{LINEUP_RULES['C']}
-        </p>
+      <section className={styles.section}> 
+        <h2 className={styles.sectionTitle}>
+          ✅ 我的陣容 ({lineup.length}/{TOTAL_PLAYERS})
+          <span style={{fontSize: '0.8rem', fontWeight: 'normal', marginLeft: '10px', color: '#666'}}>
+             (請點擊 ★ 設定隊長 x1.2)
+          </span>
+        </h2>
+        
         {lineup.length === 0 && <p>你的陣容是空的。</p>}
         
-        {/* 🎯 套用 .playerList 類名 */}
-        <div className="playerList">
+        <div className={styles.playerList}>
           {lineup.map(p => (
-            // 🎯 套用 .playerRow 類名
-            <div key={p.id} className="playerRow">
-              {/* 🎯 套用 .playerInfo, .positionBadge, .playerName, .playerTeam 類名 */}
-              <div className="playerInfo">
-                <span className="positionBadge">{p.position}</span>
-                <span className="playerName">{p.name}</span>
-                <span className="playerTeam">({p.team})</span>
+            <div 
+              key={p.id} 
+              className={styles.playerRow}
+              // [新增 7] 動態樣式：如果是隊長，顯示金色邊框和背景
+              style={{
+                borderLeft: captainId === p.id ? '5px solid #ffc107' : '4px solid #0070f3',
+                backgroundColor: captainId === p.id ? '#fff9e6' : undefined,
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <div className={styles.playerInfo}>
+                <span className={styles.positionBadge}>{p.position}</span>
+                <span className={styles.playerName}>
+                  {p.name}
+                  {/* [新增 8] 隊長星星按鈕 */}
+                  <span 
+                    onClick={() => toggleCaptain(p.id)}
+                    style={{
+                      cursor: 'pointer', 
+                      marginLeft: '10px', 
+                      color: captainId === p.id ? '#ffc107' : '#e0e0e0', // 選中金，沒選中灰
+                      fontSize: '1.2rem',
+                      userSelect: 'none'
+                    }}
+                    title={captainId === p.id ? "取消隊長" : "設為隊長"}
+                  >
+                    ★
+                  </span>
+                  {/* 隊長文字提示 */}
+                  {captainId === p.id && (
+                    <span style={{fontSize: '0.8rem', color: '#d4a017', marginLeft: '5px'}}>
+                      (隊長)
+                    </span>
+                  )}
+                </span>
+                <span className={styles.playerTeam}>({p.team})</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                {/* 🎯 套用 .playerSalary 類名 */}
-                <span className="playerSalary">${p.salary.toLocaleString()}</span>
-                {/* 🎯 套用 .button 和 .removeButton 類名 */}
-                <button className="button removeButton" onClick={() => removePlayer(p)}>移除</button>
+                <span className={styles.playerSalary}>${p.salary.toLocaleString()}</span>
+                <button className={`${styles.button} ${styles.removeButton}`} onClick={() => removePlayer(p)}>移除</button>
               </div>
             </div>
           ))}
         </div>
-        
       </section>
       
       {/* 提交按鈕 */}
-      {/* 🎯 套用 .submitButton 類名 */}
       <button 
-        className="submitButton" 
+        className={styles.submitButton} 
         onClick={handleSubmitLineup}
-        disabled={submitting || lineup.length !== TOTAL_PLAYERS || salaryRemaining < 0}
+        // [新增 9] 沒選隊長不能提交
+        disabled={submitting || lineup.length !== TOTAL_PLAYERS || salaryRemaining < 0 || !captainId}
+        style={{
+           opacity: (submitting || lineup.length !== TOTAL_PLAYERS || salaryRemaining < 0 || !captainId) ? 0.5 : 1
+        }}
       >
-        {submitting ? '儲存中...' : '儲存本週陣容'}
+        {submitting ? '儲存中...' : (!captainId && lineup.length === TOTAL_PLAYERS) ? '請選擇一位隊長' : '儲存本週陣容'}
       </button>
 
       {/* 球員池 */}
-      {/* 🎯 套用 .section 類名 */}
-      <section className="section"> 
-        {/* 🎯 套用 .sectionTitle 類名 */}
-        <h2 className="sectionTitle">🔍 球員池 (點擊新增)</h2>
+      <section className={styles.section}> 
+        <h2 className={styles.sectionTitle}>🔍 球員池 (點擊新增)</h2>
         
-        {/* 🎯 套用 .playerList 類名 */}
-        <div className="playerList">
+        <div className={styles.playerList}>
           {availablePlayers.map(p => (
-            // 🎯 套用 .playerRow 類名
-            <div key={p.id} className="playerRow">
-              {/* 🎯 套用 .playerInfo, .positionBadge, .playerName, .playerTeam 類名 */}
-              <div className="playerInfo">
-                <span className="positionBadge">{p.position}</span>
-                <span className="playerName">{p.name}</span>
-                <span className="playerTeam">({p.team})</span>
+            <div key={p.id} className={styles.playerRow}>
+              <div className={styles.playerInfo}>
+                <span className={styles.positionBadge}>{p.position}</span>
+                <span className={styles.playerName}>{p.name}</span>
+                <span className={styles.playerTeam}>({p.team})</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                {/* 🎯 套用 .playerSalary 類名 */}
-                <span className="playerSalary">${p.salary.toLocaleString()}</span>
-                {/* 🎯 套用 .button 和 .addButton 類名 */}
-                <button className="button addButton" onClick={() => addPlayer(p)}>+</button>
+                <span className={styles.playerSalary}>${p.salary.toLocaleString()}</span>
+                <button className={`${styles.button} ${styles.addButton}`} onClick={() => addPlayer(p)}>+</button>
               </div>
             </div>
           ))}
