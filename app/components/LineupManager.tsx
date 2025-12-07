@@ -1,290 +1,265 @@
-"use client" // [重要] 標記為 Client Component
+"use client";
 
-import { useState, useEffect, useMemo } from 'react'
-// [修正] 引用正確的 CSS Module 路徑 (指向我們之前建立的 page.module.css)
-import styles from './LineupManager.module.css'
-
-import { supabase } from '../../lib/supabaseClient' 
-import { useRouter } from 'next/navigation'
-import type { User } from '@supabase/supabase-js' 
-import type { Player, GameSettings } from '../../lib/types' 
+import { useState, useEffect, useMemo } from "react";
+import "./LineupManager.css"; 
+import { supabase } from "../../lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
+import type { Player, GameSettings, Position } from "../../lib/types";
 
 interface LineupManagerProps {
   initialPlayers: Player[];
   gameSettings: GameSettings;
 }
 
-const LINEUP_RULES: { [key: string]: number } = { 'G': 2, 'F': 2, 'C': 1 };
+const LINEUP_RULES = { G: 2, F: 2, C: 1 };
 const TOTAL_PLAYERS = 5;
 
 export default function LineupManager({ initialPlayers, gameSettings }: LineupManagerProps) {
   
-  const [user, setUser] = useState<User | null>(null)
-  const [lineup, setLineup] = useState<Player[]>([]) 
-  const [players, setPlayers] = useState<Player[]>(initialPlayers)
-  // [新增 1] 隊長狀態：紀錄被選為隊長的 player_id
-  const [captainId, setCaptainId] = useState<number | null>(null)
-  
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null);
+  const [lineup, setLineup] = useState<Player[]>([]);
+  const [players, setPlayers] = useState<Player[]>(initialPlayers);
 
-  // 1. 驗證使用者身份 & 載入陣容
+  // ⭐ 新增：隊長 ID
+  const [captainId, setCaptainId] = useState<number | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [filterPosition, setFilterPosition] = useState("ALL");
+  const [filterTeam, setFilterTeam] = useState("ALL");
+
+  const router = useRouter();
+
+  // 初次載入 players
+  useEffect(() => {
+    setPlayers(initialPlayers);
+  }, [initialPlayers]);
+
+
+  // 讀取使用者資料
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        setUser(session.user)
-        await fetchUserLineup(session.user.id)
+        setUser(session.user);
+        await fetchUserLineup(session.user.id);
       } else {
-        router.push('/auth') 
+        router.push("/auth");
       }
-      setLoading(false)
+      setLoading(false);
+    };
+    fetchUser();
+  }, []);
+
+
+  // 載入資料庫中的陣容 + 隊長
+  const fetchUserLineup = async (userId: string) => {
+    const { data } = await supabase
+      .from("user_lineups")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("week_number", gameSettings.current_week)
+      .single();
+
+    if (data) {
+      setLineup(initialPlayers.filter(p => data.selected_players.includes(p.id)));
+      setCaptainId(data.captain_id ?? null);
     }
-    fetchUser()
-  }, [router, gameSettings.current_week, initialPlayers]);
+  };
 
-  const fetchUserLineup = async (userId: string) => { 
-    try {
-      const { data, error } = await supabase
-        .from('user_lineups')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('week_number', gameSettings.current_week)
-        .single() 
 
-      if (error && error.code !== 'PGRST116') throw error 
-
-      if (data) {
-        const savedPlayerIds = data.selected_players as number[]; 
-        const savedLineup = initialPlayers.filter(p => savedPlayerIds.includes(p.id));
-        setLineup(savedLineup);
-        
-        // [新增 2] 如果資料庫有紀錄隊長，就載入它
-        // 注意：如果你資料庫還沒加 captain_id 欄位，這行暫時讀不到東西是正常的
-        if (data.captain_id) {
-          setCaptainId(data.captain_id)
-        }
-      }
-    } catch (error) {
-      console.error('載入陣容錯誤:', (error as Error).message)
-    }
-  }
-
-  // 2. 計算薪資和位置 (不變)
+  // 計算薪資
   const { currentSalary, salaryRemaining, positionCounts } = useMemo(() => {
-    const salary = lineup.reduce((acc, player) => acc + player.salary, 0)
-    const counts: { [key: string]: number } = { 'G': 0, 'F': 0, 'C': 0 } 
-    lineup.forEach(player => {
-      if (counts[player.position] !== undefined) {
-        counts[player.position]++
-      }
-    })
+    const salary = lineup.reduce((sum, p) => sum + p.salary, 0);
+    const counts: Record<Position, number> = { G: 0, F: 0, C: 0 };
+    lineup.forEach(p => counts[p.position]++);
     return {
       currentSalary: salary,
       salaryRemaining: gameSettings.salary_cap - salary,
-      positionCounts: counts,
-    }
-  }, [lineup, gameSettings.salary_cap])
+      positionCounts: counts
+    };
+  }, [lineup, gameSettings.salary_cap]);
 
-  // 3. 動作函式
-  const addPlayer = (player: Player) => { 
-    if (lineup.length >= TOTAL_PLAYERS) {
-      alert("陣容已滿 (5人)！")
-      return
-    }
-    if (lineup.find(p => p.id === player.id)) {
-      alert("球員已在陣容中！")
-      return
-    }
-    if (positionCounts[player.position] >= LINEUP_RULES[player.position]) {
-      alert(`位置 ${player.position} 已滿 (限制 ${LINEUP_RULES[player.position]} 人)！`)
-      return
-    }
-    if (salaryRemaining < player.salary) {
-      alert("薪資空間不足！")
-      return
-    }
-    setLineup([...lineup, player])
-  }
 
-  const removePlayer = (playerToRemove: Player) => { 
-    setLineup(lineup.filter(p => p.id !== playerToRemove.id))
-    // [新增 3] 如果移除的剛好是隊長，要重置隊長狀態
-    if (captainId === playerToRemove.id) {
-      setCaptainId(null)
-    }
-  }
+  // 新增球員
+  const addPlayer = (p: Player) => {
+    if (lineup.length >= TOTAL_PLAYERS) return alert("陣容已滿 (5人)");
+    if (lineup.find(pl => pl.id === p.id)) return alert("球員已在陣容中");
+    if (positionCounts[p.position] >= LINEUP_RULES[p.position]) return alert(`位置 ${p.position} 已滿`);
+    if (salaryRemaining < p.salary) return alert("薪資不足");
+    setLineup([...lineup, p]);
+  };
 
-  // [新增 4] 切換隊長的函式
-  const toggleCaptain = (playerId: number) => {
-    // 如果點擊已經是隊長的人 -> 取消隊長
-    // 如果點擊其他人 -> 設為新隊長
-    setCaptainId(prev => prev === playerId ? null : playerId)
-  }
+  // 移除球員 + 若是隊長就取消
+  const removePlayer = (p: Player) => {
+    setLineup(lineup.filter(pl => pl.id !== p.id));
+    if (captainId === p.id) setCaptainId(null);
+  };
 
-  // 4. 提交陣容
+  // ⭐ 切換隊長
+  const toggleCaptain = (playerId: number) =>
+    setCaptainId(prev => (prev === playerId ? null : playerId));
+
+  // 提交
   const handleSubmitLineup = async () => {
-    if (lineup.length !== TOTAL_PLAYERS) {
-      alert(`陣容必須剛好 ${TOTAL_PLAYERS} 人！`)
-      return
-    }
-    
-    // [新增 5] 檢查是否選了隊長
-    if (!captainId) {
-      alert("請點擊球員名字旁邊的 ★，選擇一名隊長！(隊長分數 x1.2)")
-      return
-    }
+    if (lineup.length !== TOTAL_PLAYERS) return alert(`需要 5 名球員`);
+    if (!captainId) return alert("請選擇隊長（★）");
 
-    // [新增] 防呆：確保隊長真的在目前的陣容裡
-    if (!lineup.find(p => p.id === captainId)) {
-      alert("無效的隊長選擇，請重新選擇！")
-      return
-    }
-    
-    setSubmitting(true)
-    try {
-      if (!user) throw new Error("使用者未登入") 
+    const { error } = await supabase
+      .from("user_lineups")
+      .upsert({
+        user_id: user?.id,
+        week_number: gameSettings.current_week,
+        selected_players: lineup.map(p => p.id),
+        captain_id: captainId
+      }, { onConflict: "user_id, week_number" });
 
-      const playerIds = lineup.map(p => p.id) 
-      
-      const { error } = await supabase
-        .from('user_lineups')
-        .upsert({
-          user_id: user.id,
-          week_number: gameSettings.current_week,
-          selected_players: playerIds,
-          captain_id: captainId, // [新增 6] 將隊長 ID 存入資料庫
-        }, {
-          onConflict: 'user_id, week_number' 
-        })
+    if (error) return alert("儲存失敗");
 
-      if (error) throw error
-      alert('陣容與隊長儲存成功！')
-      router.push('/') 
-      router.refresh()
+    alert("成功儲存");
+    router.push("/");
+  };
 
-    } catch (error) {
-      console.error('儲存陣容失敗:', (error as Error).message)
-      alert(`儲存失敗: ${(error as Error).message}`)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-  
+
+  // 球員池過濾
   const availablePlayers = useMemo(() => {
-    const lineupIds = lineup.map(p => p.id);
-    return players.filter(p => !lineupIds.includes(p.id));
-  }, [players, lineup]);
+    const selectedIds = new Set(lineup.map(p => p.id));
+    return players.filter(p =>
+      !selectedIds.has(p.id) &&
+      (filterPosition === "ALL" || p.position === filterPosition) &&
+      (filterTeam === "ALL" || p.team === filterTeam)
+    );
+  }, [players, lineup, filterPosition, filterTeam]);
 
-  if (loading) return <div style={{textAlign: 'center', marginTop: 50}}>載入玩家資料中...</div>
+
+  if (loading) return <div>載入中...</div>;
 
   return (
-    <div className={styles.container}> 
-      
-      <header className={styles.header}>
-        <h1 className={styles.title}>🏀 設定你的陣容 (Week {gameSettings.current_week})</h1>
-        <div className={styles.salaryInfo}>
-          <p className={styles.salaryText} style={{ color: salaryRemaining < 0 ? '#dc3545' : '#28a745' }}> 
-            剩餘薪資: ${salaryRemaining.toLocaleString()}
-          </p>
-          <p className={styles.salaryText}>
-            總薪資: ${currentSalary.toLocaleString()} / ${gameSettings.salary_cap.toLocaleString()}
-          </p>
-        </div>
-      </header>
+    <div className="container">
 
-      <section className={styles.section}> 
-        <h2 className={styles.sectionTitle}>
-          ✅ 我的陣容 ({lineup.length}/{TOTAL_PLAYERS})
-          <span style={{fontSize: '0.8rem', fontWeight: 'normal', marginLeft: '10px', color: '#666'}}>
-             (請點擊 ★ 設定隊長 x1.2)
+      {/* ===== 我的陣容 ===== */}
+      <section className="section">
+        <h2 className="sectionTitle">
+          我的陣容 ({lineup.length}/5)
+          <span style={{ fontSize: "0.9rem", marginLeft: 16, marginRight: 16, color: "#777" }}>
+            （點 ★ 設定隊長 x1.2）
           </span>
         </h2>
-        
-        {lineup.length === 0 && <p>你的陣容是空的。</p>}
-        
-        <div className={styles.playerList}>
-          {lineup.map(p => (
-            <div 
-              key={p.id} 
-              className={styles.playerRow}
-              // [新增 7] 動態樣式：如果是隊長，顯示金色邊框和背景
-              style={{
-                borderLeft: captainId === p.id ? '5px solid #ffc107' : '4px solid #0070f3',
-                backgroundColor: captainId === p.id ? '#fff9e6' : undefined,
-                transition: 'all 0.3s ease'
-              }}
-            >
-              <div className={styles.playerInfo}>
-                <span className={styles.positionBadge}>{p.position}</span>
-                <span className={styles.playerName}>
-                  {p.name}
-                  {/* [新增 8] 隊長星星按鈕 */}
-                  <span 
-                    onClick={() => toggleCaptain(p.id)}
-                    style={{
-                      cursor: 'pointer', 
-                      marginLeft: '10px', 
-                      color: captainId === p.id ? '#ffc107' : '#e0e0e0', // 選中金，沒選中灰
-                      fontSize: '1.2rem',
-                      userSelect: 'none'
-                    }}
-                    title={captainId === p.id ? "取消隊長" : "設為隊長"}
-                  >
-                    ★
-                  </span>
-                  {/* 隊長文字提示 */}
-                  {captainId === p.id && (
-                    <span style={{fontSize: '0.8rem', color: '#d4a017', marginLeft: '5px'}}>
-                      (隊長)
+
+          <div className="playerList">
+            {lineup.map(p => (
+              <div 
+                key={p.id}
+                className="playerRow"
+                style={{
+                  borderLeft: captainId === p.id ? "5px solid gold" : "5px solid #0070f3",
+                  backgroundColor: captainId === p.id ? "#fff7d1" : ""
+                }}
+              >
+
+                {/* 左邊：球員資訊 */}
+                <div className="playerInfo">
+
+                  <img src={p.image_url} className="playerPhoto" />
+
+                  <span className="positionBadge">{p.position}</span>
+
+                  <div className="playerText">
+
+                    <span className="playerName">
+                      {p.name}
+
+                      <span
+                        className="captainStar"
+                        onClick={() => toggleCaptain(p.id)}
+                        style={{
+                          color: captainId === p.id ? "gold" : "#ccc",
+                          marginLeft: 8,
+                          cursor: "pointer"
+                        }}
+                      >
+                        ★
+                      </span>
                     </span>
-                  )}
-                </span>
-                <span className={styles.playerTeam}>({p.team})</span>
+
+                    <span className="playerTeam">({p.team})</span>
+
+                    <div className="playerStats">
+                      PTS {p.PTS} ｜ REB {p.REB} ｜ AST {p.AST} ｜ STL {p.STL} ｜ BLK {p.BLK} ｜ TOV {p.TURNOVER} ｜ 3PM {p.THREE_made}
+                    </div>
+
+                  </div> {/* playerText */}
+                </div> {/* playerInfo */}
+
+                {/* 右邊：薪資 & 按鈕 */}
+                <div className="playerActions">
+                  <span className="playerSalary">${p.salary.toLocaleString()}</span>
+                  <button className="button removeButton" onClick={() => removePlayer(p)}>移除</button>
+                </div>
+
               </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span className={styles.playerSalary}>${p.salary.toLocaleString()}</span>
-                <button className={`${styles.button} ${styles.removeButton}`} onClick={() => removePlayer(p)}>移除</button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
       </section>
-      
-      {/* 提交按鈕 */}
-      <button 
-        className={styles.submitButton} 
+
+      {/* ===== 提交 ===== */}
+      <button
+        className="submitButton"
+        disabled={!captainId || lineup.length !== 5}
         onClick={handleSubmitLineup}
-        // [新增 9] 沒選隊長不能提交
-        disabled={submitting || lineup.length !== TOTAL_PLAYERS || salaryRemaining < 0 || !captainId}
-        style={{
-           opacity: (submitting || lineup.length !== TOTAL_PLAYERS || salaryRemaining < 0 || !captainId) ? 0.5 : 1
-        }}
       >
-        {submitting ? '儲存中...' : (!captainId && lineup.length === TOTAL_PLAYERS) ? '請選擇一位隊長' : '儲存本週陣容'}
+        {!captainId ? "請選擇隊長" : "儲存本週陣容"}
       </button>
 
-      {/* 球員池 */}
-      <section className={styles.section}> 
-        <h2 className={styles.sectionTitle}>🔍 球員池 (點擊新增)</h2>
-        
-        <div className={styles.playerList}>
+      {/* ===== 球員池 ===== */}
+      <section className="section">
+        <h2 className="sectionTitle">球員池</h2>
+
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+          <select value={filterPosition} onChange={(e) => setFilterPosition(e.target.value)} className="filterSelect">
+            <option value="ALL">所有位置</option>
+            <option value="G">G</option>
+            <option value="F">F</option>
+            <option value="C">C</option>
+          </select>
+
+          <select value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)} className="filterSelect">
+            <option value="ALL">所有球隊</option>
+            {Array.from(new Set(players.map(p => p.team))).map(team => (
+              <option key={team}>{team}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="playerList">
           {availablePlayers.map(p => (
-            <div key={p.id} className={styles.playerRow}>
-              <div className={styles.playerInfo}>
-                <span className={styles.positionBadge}>{p.position}</span>
-                <span className={styles.playerName}>{p.name}</span>
-                <span className={styles.playerTeam}>({p.team})</span>
+            <div key={p.id} className="playerRow">
+              <div className="playerInfo">
+
+                <img src={p.image_url} className="playerPhoto" />
+
+                <span className="positionBadge">{p.position}</span>
+
+                <div className="playerText">
+                  <span className="playerName">{p.name}</span>
+                  <span className="playerTeam">({p.team})</span>
+                  <div className="playerStats">
+                    PTS {p.PTS} ｜ REB {p.REB} ｜ AST {p.AST} ｜ STL {p.STL} ｜ BLK {p.BLK} ｜ TOV {p.TURNOVER} ｜ 3PM {p.THREE_made}
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span className={styles.playerSalary}>${p.salary.toLocaleString()}</span>
-                <button className={`${styles.button} ${styles.addButton}`} onClick={() => addPlayer(p)}>+</button>
+
+              <div>
+                <span className="playerSalary">${p.salary.toLocaleString()}</span>
+                <button className="button addButton" onClick={() => addPlayer(p)}>+</button>
               </div>
             </div>
           ))}
         </div>
+
       </section>
     </div>
-  )
+  );
 }
