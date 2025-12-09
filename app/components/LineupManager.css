@@ -175,3 +175,18 @@
   border: 2px solid #ddd; /* 外框 */
   box-shadow: 0 2px 6px rgba(0,0,0,0.1); /* 小陰影 */
 }
+.salaryBox {
+  position: fixed;
+  top: 70px;   /* Nav 下方 */
+  left: 20px;
+  background: #6f6b6b;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+
