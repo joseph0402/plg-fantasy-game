@@ -9,6 +9,7 @@ export interface Player {
     team: string;
     position: Position;
     salary: number;
+    foreigner: boolean;
     PTS: number;
     REB: number;
     AST: number;

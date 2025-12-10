@@ -1,192 +1,369 @@
-/* 整個頁面的容器 */
+/* =============================== */
+/* 🌐 Global Layout (全域配置) */
+/* =============================== */
+
 .container {
   max-width: 900px;
-  margin: 0 auto; /* 置中 */
-  padding: 2rem; /* 內距，讓內容不要貼邊 */
-  font-family: 'Arial', sans-serif;
-}
-
-/* 頂部標題與薪資區塊 */
-.header {
-  display: flex;
-  justify-content: space-between; /* 左右撐開 */
-  align-items: flex-end; /* 底部對齊 */
-  margin-bottom: 2rem; /* 與下方內容的距離 */
-  border-bottom: 2px solid #f0f0f0;
-  padding-bottom: 1rem;
-}
-
-.title {
-  font-size: 1.8rem;
-  font-weight: bold;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: #333;
+}
+
+/* =============================== */
+/* 💳 Salary Card (薪資資訊卡片) */
+/* =============================== */
+
+/* =============================== */
+/* 💳 Salary Card (薪資資訊卡片 - 固定窗格版) */
+/* =============================== */
+
+.salaryCard {
+  background: rgba(255, 255, 255, 0.98); /*稍微一點點透明，增加現代感*/
+  backdrop-filter: blur(10px); /* 背後模糊特效 (毛玻璃) */
+  border: 1px solid #e5e5e5;
+  padding: 20px; /* 稍微縮小一點 padding 讓它不要佔據太多高度 */
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  
+  /* ⭐ 關鍵設定：讓它變身為固定窗格 ⭐ */
+  position: sticky; 
+  top: 10px;    /* 距離視窗頂部 10px 時吸附住 */
+  z-index: 1000; /* 確保它浮在球員列表的上方，不會被蓋住 */
+}
+
+/* (以下內容保持不變，但為了配合變小的 padding，這裡微調間距) */
+.salaryTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.salaryNumbers {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+  margin-bottom: 15px;
+  gap: 10px;
+}
+
+/* ... 其餘 CSS 保持原本合併後的樣子 ... */
+.title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #1a1a1a;
   margin: 0;
 }
 
-/* 薪資資訊 */
-.salaryInfo {
-  text-align: right;
+
+/* 單個數據盒子 */
+.salaryBox {
+  flex: 1; /* 平均分配寬度 */
+  text-align: center;
+  background-color: #f8f9fa;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #eee;
 }
 
-.salaryText {
-  font-size: 1.1rem;
-  margin: 5px 0; /* 文字上下的間距 */
-  font-weight: 500;
+.salaryBox .label {
+  display: block;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* 陣容區塊與球員池區塊 */
+.salaryBox .value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #333;
+}
+
+/* 薪資進度條容器 */
+.salaryBarContainer {
+  width: 100%;
+  height: 14px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 薪資進度條填充 */
+.salaryBarFill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+  background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+  background-size: 1rem 1rem; /* 增加斜線紋理質感 */
+}
+
+/* =============================== */
+/* 📦 Section (通用區塊) */
+/* =============================== */
+
 .section {
   background-color: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 12px; /* 圓角 */
+  border-radius: 12px;
   padding: 1.5rem;
-  margin-bottom: 2rem; /* 區塊之間的距離 */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* 淡淡的陰影 */
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .sectionTitle {
   font-size: 1.3rem;
-  margin-bottom: 1rem;
+  font-weight: 700;
+  margin-bottom: 1.2rem;
   color: #444;
-  border-left: 5px solid #0070f3; /* 左邊藍色裝飾線 */
-  padding-left: 10px;
+  border-left: 5px solid #0070f3;
+  padding-left: 12px;
+  display: flex;
+  align-items: center;
 }
 
-/* 球員列表 (Grid 排版) */
+/* =============================== */
+/* 🏀 Player List (球員列表) */
+/* =============================== */
+
 .playerList {
   display: flex;
   flex-direction: column;
-  gap: 10px; /* 每一行球員之間的距離 */
+  gap: 12px;
 }
 
-/* 單個球員卡片 */
 .playerRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  transition: transform 0.1s ease, background-color 0.2s;
+  padding: 16px;
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  transition: all 0.2s ease;
 }
 
 .playerRow:hover {
-  background-color: #f0f8ff; /* 滑鼠移過去變色 */
-  transform: translateY(-2px); /* 微微浮起 */
+  background-color: #f8fbff;
+  border-color: #cce0ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 112, 243, 0.1);
 }
 
-/* 球員資訊文字區 */
+/* 球員基本資訊區 (左側) */
 .playerInfo {
   display: flex;
   align-items: center;
-  gap: 20px; /* 位置、姓名、隊伍之間的距離 */
+  gap: 16px;
+  flex: 1; /* 佔據剩餘空間 */
+}
+
+.playerPhoto {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  border: 2px solid #e0e0e0;
+  background-color: #f0f0f0;
+  flex-shrink: 0; /* 防止照片被壓縮 */
 }
 
 .positionBadge {
   background-color: #333;
   color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 0;
+  border-radius: 6px;
   font-weight: bold;
-  font-size: 0.9rem;
-  width: 30px;
+  font-size: 0.85rem;
+  width: 32px;
   text-align: center;
+  flex-shrink: 0;
+}
+
+/* 球員文字與數據 */
+.playerText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .playerName {
   font-size: 1.1rem;
   font-weight: bold;
   color: #222;
+  display: flex;
+  align-items: center;
 }
 
 .playerTeam {
   color: #666;
   font-size: 0.9rem;
+  margin-left: 6px;
+  font-weight: normal;
+}
+
+.playerStats {
+  font-size: 0.8rem;
+  color: #666;
+  line-height: 1.4;
+  background: #f5f5f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* 操作區 (右側) */
+.playerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .playerSalary {
-  font-weight: bold;
+  font-weight: 700;
   color: #0070f3;
   font-size: 1.1rem;
-  margin-right: 15px;
+  font-family: monospace; /* 讓數字對齊更好看 */
 }
 
-/* 按鈕樣式 */
+/* =============================== */
+/* 🎛 Buttons & Inputs (互動元件) */
+/* =============================== */
+
 .button {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: bold;
-  transition: opacity 0.2s;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .button:hover {
-  opacity: 0.8;
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.button:active {
+  transform: scale(0.95);
 }
 
 .addButton {
-  background-color: #28a745; /* 綠色 */
+  background-color: #28a745;
   color: white;
+  
 }
 
 .removeButton {
-  background-color: #dc3545; /* 紅色 */
+  background-color: #dc3545;
   color: white;
+  padding: 6px 12px;
 }
 
+/* 提交按鈕 */
 .submitButton {
   width: 100%;
-  padding: 15px;
+  padding: 16px;
   font-size: 1.2rem;
   background-color: #0070f3;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   margin-top: 1rem;
   font-weight: bold;
+  box-shadow: 0 4px 14px rgba(0, 112, 243, 0.3);
+  transition: all 0.2s ease;
+}
+
+.submitButton:hover:not(:disabled) {
+  background-color: #0060df;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 112, 243, 0.4);
 }
 
 .submitButton:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+  opacity: 0.7;
 }
 
+/* 篩選下拉選單 */
 .filterSelect {
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 1rem;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 0.95rem;
+  background-color: white;
+  cursor: pointer;
+  outline: none;
+  min-width: 120px;
 }
 
-.playerStats {
-  font-size: 0.85rem;
-  color: #555;
-  margin-top: 4px;
+.filterSelect:focus {
+  border-color: #0070f3;
+  box-shadow: 0 0 0 3px rgba(0, 112, 243, 0.1);
 }
 
-.playerPhoto {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  object-fit: cover;
-  object-position: top;
-  border: 2px solid #ddd; /* 外框 */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1); /* 小陰影 */
-}
-.salaryBox {
-  position: fixed;
-  top: 70px;   /* Nav 下方 */
-  left: 20px;
-  background: #6f6b6b;
-  color: white;
-  padding: 10px 18px;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: bold;
-  z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+.salaryRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 
+/* =============================== */
+/* 📱 RWD (手機版優化) */
+/* =============================== */
+
+@media (max-width: 600px) {
+  .container {
+    padding: 1rem;
+  }
+  
+  .title {
+    font-size: 1.4rem;
+  }
+
+  .salaryNumbers {
+    flex-wrap: wrap;
+  }
+  
+  .salaryBox {
+    min-width: 30%; /* 手機上讓格子變小 */
+    padding: 8px;
+  }
+  
+  .playerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .playerInfo {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+  
+  .playerActions {
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 10px;
+  }
+  
+  .playerStats {
+    display: none; /* 手機版太擠，隱藏詳細數據 */
+  }
+}

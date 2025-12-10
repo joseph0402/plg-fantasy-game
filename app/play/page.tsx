@@ -3,7 +3,8 @@
 // 這是 Server Component，負責抓資料
 import { supabase } from '../../lib/supabaseClient'
 import LineupManager from '../components/LineupManager'
-import type { Player, GameSettings } from '../../lib/types' // [修正] 從共享檔案匯入
+import GameRules from '../components/GameRules' // [新增] 引入規則組件
+import type { Player, GameSettings } from '../../lib/types'
 
 // 抓取球員 (回傳型別是 Player[])
 async function getPlayers(): Promise<Player[]> {
@@ -25,7 +26,7 @@ async function getGameSettings(): Promise<GameSettings | null> {
   
   if (error) {
     console.error('Error fetching settings:', error)
-    return null // 確保錯誤時回傳 null
+    return null 
   }
   return (data as GameSettings) || null
 }
@@ -38,24 +39,29 @@ export default async function PlayPage() {
     getGameSettings()
   ])
 
-  // 2. [關鍵] 處理 null 的情況
+  // 2. 處理 null 的情況
   if (!gameSettings) {
     return <div>錯誤：無法載入遊戲設定(gameSettings)。</div>
   }
   
   if (players.length === 0) {
-    return <div>錯誤：無法載入球員資料(players)。(請檢查你是否已在 Supabase 手動輸入球員)</div>
+    return <div>錯誤：無法載入球員資料(players)。</div>
   }
 
-  // 3. 將資料作為 props 傳遞給 Client Component
-  // 到了這裡，TypeScript 知道 gameSettings "絕對不是 null"
+  // 3. 渲染頁面
   return (
-    <LineupManager 
-      initialPlayers={players} 
-      gameSettings={gameSettings} 
-    />
+    <div style={{ padding: '20px' }}> {/* [修改] 加一個外層 div 來包住兩者 */}
+      
+      {/* [新增] 在最上方放置遊戲說明 */}
+      <GameRules />
+
+      {/* 原本的陣容管理器 */}
+      <LineupManager 
+        initialPlayers={players} 
+        gameSettings={gameSettings} 
+      />
+    </div>
   )
 }
 
-// [重要] 我們需要動態渲染來確保用戶認證
 export const revalidate = 0

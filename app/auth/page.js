@@ -1,125 +1,225 @@
-// app/auth/page.js
+"use client";
 
-"use client" // [重要] 標記為 Client Component
-
-import { useState } from 'react'
-import { supabase } from '../../lib/supabaseClient' // 檢查路徑
-import { useRouter } from 'next/navigation' // [注意] 這裡是 'next/navigation'
-
-// 簡單的 CSS 樣式
-const styles = {
-  container: { maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' },
-  input: { width: '100%', padding: '8px', margin: '10px 0', boxSizing: 'border-box' },
-  button: { width: '100%', padding: '10px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', margin: '5px 0' },
-}
+import { useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 export default function Auth() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [username, setUsername] = useState('')
-  const [isLogin, setIsLogin] = useState(true) // 切換登入或註冊
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const router = useRouter() // 使用 'next/navigation'
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const router = useRouter();
 
   const handleLogin = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      })
-      if (error) throw error
-      // 登入成功，導向陣容頁面
-      router.push('/play') // 導向 /play
-    } catch (error) {
-      setError(error.message)
+        email,
+        password,
+      });
+      if (error) throw error;
+
+      router.push("/"); // ← 登入成功 → 排行榜
+    } catch (err) {
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleSignUp = async (e) => {
-    e.preventDefault()
-    if (!username) {
-        setError("請輸入玩家名稱 (Username)")
-        return
-    }
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    if (!username) return setError("請輸入玩家名稱");
+
+    setLoading(true);
+    setError(null);
+
     try {
-      // 1. 註冊帳號
-      // [修正] 這裡移除了多餘的 '_'
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-      })
-      if (authError) throw authError
-      
-      // 2. [重要] 在 user_profiles 建立對應的資料
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({ 
-          id: authData.user.id, // 確保 ID 一致
-          username: username 
-        })
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      if (signupError) throw signupError;
 
-      if (profileError) {
-        // 即使 profile 建立失敗，auth 帳號還是成功了
-        // 我們只在 console 警告，但不阻擋使用者
-        console.warn("註冊 Auth 成功，但建立 Profile 失敗:", profileError.message)
-      }
+      await supabase
+        .from("user_profiles")
+        .insert({ id: data.user.id, username });
 
-      alert('註冊成功！請直接登入。')
-      setIsLogin(true) // 切換回登入畫面
-
-    } catch (error) {
-      setError(error.message)
+      alert("註冊成功！請登入");
+      setIsLogin(true);
+    } catch (err) {
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div style={styles.container}>
-      <h2>{isLogin ? '登入' : '註冊新帳號'}</h2>
-      <form onSubmit={isLogin ? handleLogin : handleSignUp}>
-        {!isLogin && (
+    <div style={pageStyle}>
+      {/* 3D 背景光暈 */}
+      <div style={glow1}></div>
+      <div style={glow2}></div>
+
+      <div style={glassCard}>
+        <h2 style={title}>{isLogin ? "登入遊戲" : "創建帳號"}</h2>
+
+        <form onSubmit={isLogin ? handleLogin : handleSignUp}>
+          {!isLogin && (
+            <input
+              style={input}
+              placeholder="玩家名稱"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          )}
+
           <input
-            style={styles.input}
-            type="text"
-            placeholder="你的玩家名稱"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            style={input}
+            type="email"
+            placeholder="Email 信箱"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
-        )}
-        <input
-          style={styles.input}
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          style={styles.input}
-          type="password"
-          placeholder="密碼 (至少 6 位數)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button style={styles.button} type="submit" disabled={loading}>
-          {loading ? '處理中...' : (isLogin ? '登入' : '註冊')}
+
+          <input
+            style={input}
+            type="password"
+            placeholder="密碼（至少 6 位）"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <button style={button} disabled={loading}>
+            {loading ? "處理中..." : isLogin ? "登入" : "註冊"}
+          </button>
+        </form>
+
+        {error && <p style={errorText}>{error}</p>}
+
+        <button style={switchButton} onClick={() => setIsLogin(!isLogin)}>
+          {isLogin ? "沒有帳號？點我註冊" : "已有帳號？點我登入"}
         </button>
-      </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <button
-        style={{...styles.button, backgroundColor: '#888'}}
-        onClick={() => setIsLogin(!isLogin)}
-      >
-        {isLogin ? '還沒有帳號？點此註冊' : '已經有帳號？點此登入'}
-      </button>
+      </div>
+
+      {/* 動畫 */}
+      <style>{`
+        @keyframes floatCard {
+          0% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+          100% { transform: translateY(0); }
+        }
+      `}</style>
     </div>
-  )
+  );
 }
+
+/* ==== 🎨 3D Frosted Glass Styles ==== */
+
+const pageStyle = {
+  minHeight: "100vh",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  background: "linear-gradient(135deg, #fafafa, #e6ebf4)",
+  position: "relative",
+  overflow: "hidden",
+};
+
+/* --- 背景光暈效果（霧玻璃設計精髓） --- */
+
+const glow1 = {
+  position: "absolute",
+  width: "380px",
+  height: "380px",
+  borderRadius: "50%",
+  background: "rgba(255, 153, 255, 0.4)",
+  filter: "blur(120px)",
+  top: "-60px",
+  left: "-40px",
+};
+
+const glow2 = {
+  position: "absolute",
+  width: "420px",
+  height: "420px",
+  borderRadius: "50%",
+  background: "rgba(120, 180, 255, 0.35)",
+  filter: "blur(130px)",
+  bottom: "-80px",
+  right: "-60px",
+};
+
+/* --- 3D 霧面玻璃卡片 --- */
+
+const glassCard = {
+  width: "100%",
+  maxWidth: "420px",
+  padding: "40px",
+  borderRadius: "22px",
+  background: "rgba(255,255,255,0.55)",
+  backdropFilter: "blur(14px)",
+  border: "1px solid rgba(255,255,255,0.8)",
+  boxShadow:
+    "0 8px 25px rgba(0,0,0,0.12), 0 15px 35px rgba(0,0,0,0.08), inset 0 0 25px rgba(255,255,255,0.2)",
+  animation: "floatCard 6s ease-in-out infinite",
+};
+
+const title = {
+  textAlign: "center",
+  fontSize: "28px",
+  fontWeight: "700",
+  marginBottom: "25px",
+  color: "#333",
+};
+
+const input = {
+  width: "100%",
+  padding: "14px",
+  margin: "10px 0 18px",
+  borderRadius: "14px",
+  border: "1px solid rgba(0,0,0,0.12)",
+  background: "rgba(255,255,255,0.9)",
+  fontSize: "16px",
+  outline: "none",
+  color: "#333",
+  boxShadow: "inset 0 2px 4px rgba(0,0,0,0.08)",
+};
+
+const button = {
+  width: "100%",
+  padding: "14px",
+  borderRadius: "14px",
+  border: "none",
+  background:
+    "linear-gradient(135deg, rgb(90,140,255), rgb(120,100,255))",
+  color: "white",
+  fontWeight: "700",
+  fontSize: "17px",
+  cursor: "pointer",
+  transition: "0.25s",
+  marginTop: "10px",
+  boxShadow: "0 6px 16px rgba(120,140,255,0.35)",
+};
+
+const switchButton = {
+  marginTop: "18px",
+  width: "100%",
+  padding: "12px",
+  borderRadius: "12px",
+  background: "rgba(255,255,255,0.75)",
+  border: "1px solid rgba(0,0,0,0.12)",
+  cursor: "pointer",
+  color: "#333",
+};
+
+const errorText = {
+  color: "#d9534f",
+  textAlign: "center",
+  marginTop: "10px",
+};
