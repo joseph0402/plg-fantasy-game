@@ -53,7 +53,7 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: "999px",
     padding: "4px",
     width: "fit-content",
-    marginBottom: "20px",
+    margin: "0 auto 20px",   // ⭐⭐⭐ 置中 + 下方空間
   },
 
   tabButton: {
@@ -247,8 +247,6 @@ export default function LeaderboardTabs({
 
   return (
     <div style={styles.container}>
-      <h1>PLG 夢幻籃球</h1>
-
       {/* Tabs */}
       <div style={styles.tabsContainer}>
         <div

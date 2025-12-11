@@ -122,6 +122,9 @@ export default function Navbar() {
     >
       {/* 左側選單 */}
       <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+        <h1 style={{ margin: 0 }}>🏀PLG 夢幻籃球</h1>
+
+        {/* 左側兩個按鈕 */}
         <GlassButton href="/">排行榜</GlassButton>
         <GlassButton href="/play">我的陣容</GlassButton>
       </div>
