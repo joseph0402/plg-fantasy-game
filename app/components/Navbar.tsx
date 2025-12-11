@@ -135,13 +135,9 @@ export default function Navbar() {
             {/* 玩家名稱 */}
             <span
               style={{
-                padding: "8px 16px",
-                background: "rgba(255,255,255,0.45)",
-                backdropFilter: "blur(10px)",
-                border: "1.6px solid rgba(255,255,255,0.85)",
-                borderRadius: "20px",
-                boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
                 fontWeight: 600,
+                fontSize: "1rem",
+                color:"#333333ff",
               }}
             >
               {displayName}
