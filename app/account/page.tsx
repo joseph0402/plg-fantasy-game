@@ -25,7 +25,7 @@ export default function Account() {
 
       if (error && error.code !== "PGRST116") throw error;
 
-      setUsername(data?.username ?? "");
+      setUsername(data?.username ?? currentUser.email);;
     } catch (err) {
       console.error("Profile 載入失敗:", (err as Error).message);
       setMessage({ type: "error", text: "無法載入玩家資料。" });

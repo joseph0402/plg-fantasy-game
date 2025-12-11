@@ -74,7 +74,7 @@ export default function Navbar() {
           .eq("id", sessionUser.id)
           .single();
 
-        setUsername(profile?.username ?? null);
+          setUsername(profile?.username ?? sessionUser.email);
       }
 
       setLoading(false);
